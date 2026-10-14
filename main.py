@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from ui import StateWindow
 import window as window
 
-
 # constants
 TARGET_WINDOW_TITLE = "File Explorer"  # Change this to the title of the window you want to target
 
