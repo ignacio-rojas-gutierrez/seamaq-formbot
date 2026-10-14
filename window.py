@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from pywinauto import findwindows
 from pywinauto.controls.hwndwrapper import HwndWrapper
 
+import push_error
+
 @dataclass
 class WindowInfo:
     title: str = ""
@@ -17,27 +19,47 @@ class WindowInfo:
     is_foreground: bool = False
     bounds: tuple = field(default_factory=tuple)
 
-def get_window_info_by_title(window_title: str) -> WindowInfo:
-    handles = findwindows.find_windows(title=window_title)
-    if not handles:
-        raise ValueError(f"Window not found: {window_title}")
+def get_window_by_wrapper(wrapper:HwndWrapper) -> WindowInfo:
+    """Build a WindowInfo from a pywinauto wrapper (window or child control).
+    Also accepts a WindowSpecification, e.g. app.window(...) or dlg.child_window(...)."""
+    if hasattr(wrapper, "wrapper_object"):
+        wrapper = wrapper.wrapper_object()
 
-    handle = handles[0]
-    win = HwndWrapper(handle)
-    show_state = win.get_show_state()  # 1 = normal, 2 = minimized, 3 = maximized
-    rect = win.rectangle()
+    handle = wrapper.handle
+    show_state = wrapper.get_show_state()  # 1 = normal, 2 = minimized, 3 = maximized
+    rect = wrapper.rectangle()
 
     return WindowInfo(
-        title=win.window_text(),
-        class_name=win.class_name(),
-        process_id=win.process_id(),
+        title=wrapper.window_text(),
+        class_name=wrapper.class_name(),
+        process_id=wrapper.process_id(),
         handle=handle,
-        is_visible=win.is_visible(),
-        is_enabled=win.is_enabled(),
+        is_visible=wrapper.is_visible(),
+        is_enabled=wrapper.is_enabled(),
         is_minimized=(show_state == 2),
         is_maximized=(show_state == 3),
         is_foreground=(win32gui.GetForegroundWindow() == handle),
         bounds=(rect.left, rect.top, rect.right, rect.bottom),
     )
-        
-    raise ValueError(f"Window not found: {window_title}")
+
+def get_window_info_by_title(window_title: str) -> WindowInfo:
+    handles = findwindows.find_windows(title=window_title)
+
+    push_error.push_error_if(
+        not handles, f"Window not found: {window_title}"
+    )
+
+    if not handles:
+        return None
+
+    return get_window_by_wrapper(HwndWrapper(handles[0]))
+
+def get_child_windows(window_title: str) -> list:
+    """WindowInfo for every child control of the window with this title."""
+    handles = findwindows.find_windows(title=window_title)
+    if not handles:
+        push_error.push_error(f"Could not find Child windows; Window not found: {window_title}")
+        return []
+    
+    parent = HwndWrapper(handles[0])
+    return [get_window_by_wrapper(child) for child in parent.children()]
