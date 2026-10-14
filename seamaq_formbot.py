@@ -13,10 +13,12 @@ TARGET_WINDOW_TITLE = "File Explorer"  # Change this to the title of the window 
 @dataclass
 class State:
     should_exit: bool = False
+    mouse_pos: tuple = field(default_factory=tuple)
     target_window: 'window.WindowInfo' = None
     test_windows_array: list = field(default_factory=list)
     counter: int = 0
     error_list: list[str] = field(default_factory=list)
+    counter: int = 0
 
 state : 'State' = None
 state_window : 'StateWindow' = None
@@ -60,6 +62,8 @@ def get_state_window():
 def update_state():
     get_state().target_window = get_target_window()
     get_state().test_windows_array = window.get_child_windows(TARGET_WINDOW_TITLE)
+    get_state().mouse_pos = window.get_mouse_pos()
+
     get_state().counter += 1
     
 def update_state_window():

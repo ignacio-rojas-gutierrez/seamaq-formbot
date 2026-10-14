@@ -18,6 +18,8 @@ class WindowInfo:
     is_maximized: bool = False      
     is_foreground: bool = False
     bounds: tuple = field(default_factory=tuple)
+    mouse_pos_relative: tuple = field(default_factory=tuple)
+    mouse_pos_client: tuple = field(default_factory=tuple)
 
 def get_window_by_wrapper(wrapper:HwndWrapper) -> WindowInfo:
     """Build a WindowInfo from a pywinauto wrapper (window or child control).
@@ -40,6 +42,8 @@ def get_window_by_wrapper(wrapper:HwndWrapper) -> WindowInfo:
         is_maximized=(show_state == 3),
         is_foreground=(win32gui.GetForegroundWindow() == handle),
         bounds=(rect.left, rect.top, rect.right, rect.bottom),
+        mouse_pos_relative=get_mouse_pos_relative(handle),
+        mouse_pos_client=get_mouse_pos_client(handle)
     )
 
 def get_window_info_by_title(window_title: str) -> WindowInfo:
@@ -63,3 +67,21 @@ def get_child_windows(window_title: str) -> list:
     
     parent = HwndWrapper(handles[0])
     return [get_window_by_wrapper(child) for child in parent.children()]
+
+
+def get_mouse_pos() -> tuple:
+    """Mouse position in screen coordinates."""
+    return win32gui.GetCursorPos()
+
+
+def get_mouse_pos_relative(handle: int) -> tuple:
+    """Mouse position relative to the window's top-left corner (includes title bar and borders)."""
+    mx, my = win32gui.GetCursorPos()
+    left, top, _right, _bottom = win32gui.GetWindowRect(handle)
+    return (mx - left, my - top)
+
+
+def get_mouse_pos_client(handle: int) -> tuple:
+    """Mouse position relative to the client area (excludes title bar and borders).
+    This is the one to use for clicking controls inside the window."""
+    return win32gui.ScreenToClient(handle, win32gui.GetCursorPos())
