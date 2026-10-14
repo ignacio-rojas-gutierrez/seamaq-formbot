@@ -20,8 +20,7 @@ state : 'State' = None
 state_window : 'StateWindow' = None
 
 def get_target_window():
-    if state.target_window is None:
-        state.target_window = window.get_window_info_by_title(TARGET_WINDOW_TITLE)
+    state.target_window = window.get_window_info_by_title(TARGET_WINDOW_TITLE)
 
     return get_state().target_window
 
@@ -56,6 +55,10 @@ def get_state_window():
         raise RuntimeError("State window is not initialized.")
     
     return state_window
+
+def update_state():
+    get_state().target_window = get_target_window()
+    get_state().counter += 1
     
 def update_state_window():
     get_state_window().update()
@@ -80,6 +83,7 @@ def main():
     initialize()
     state_window.log("Application started. Press ESC to exit.")
     while not should_exit():
+        update_state()
         update_state_window()
         sleep(1/60) # Run at 60 FPS
 
