@@ -28,7 +28,7 @@ def get_target_window():
 
 def get_state():
     global state
-    if state is None:
+    if state is None: # Create state if it's null
         state = State()
 
     if state is None:
@@ -48,7 +48,8 @@ def initialize_keyboard_listener():
 
 def get_state_window():
     global state_window
-    if state_window is None:
+
+    if state_window is None: # Create state window if it's null
         current_state = get_state()
         state_window = StateWindow(current_state, on_close=lambda: setattr(current_state, "should_exit", True))
 
