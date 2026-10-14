@@ -61,16 +61,19 @@ def update_state_window():
     get_state_window().update()
 
 def setup_state():
+    global state
     state = get_state()
     state.target_window = get_target_window()
 
-def initialize():
-    initialize_keyboard_listener()
-    
-    state = get_state()
+def setup_state_window():
+    global state_window
     state_window = get_state_window()
 
+def initialize():
+    initialize_keyboard_listener()
+
     setup_state()
+    setup_state_window()
 
 # Entry
 def main():
