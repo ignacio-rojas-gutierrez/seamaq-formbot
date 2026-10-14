@@ -16,7 +16,6 @@ class State:
     mouse_pos: tuple = field(default_factory=tuple)
     target_window: 'window.WindowInfo' = None
     test_windows_array: list = field(default_factory=list)
-    counter: int = 0
     error_list: list[str] = field(default_factory=list)
     counter: int = 0
 
@@ -54,9 +53,8 @@ def get_state_window():
     if state_window is None: # Create state window if it's null
         current_state = get_state()
         state_window = StateWindow(current_state, on_close=lambda: setattr(current_state, "should_exit", True))
+        push_error.push_error_if(state_window is None, "State Window not initialized.")
 
-    push_error.push_error("State window initialized.")
-    
     return state_window
 
 def update_state():
