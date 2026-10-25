@@ -1,13 +1,10 @@
 from time import sleep
+from pywinauto import Application
 import seamaq_formbot as seamaq_formbot
 
-# Entry
+# Entry point
 def main():
-    seamaq_formbot.initialize()
-    while not seamaq_formbot.should_exit():
-        seamaq_formbot.update()
-        sleep(1/120) # Run at 120 FPS
-
+    seamaq_formbot.run()
 
 if __name__ == "__main__":
     main()

@@ -85,3 +85,17 @@ def get_mouse_pos_client(handle: int) -> tuple:
     """Mouse position relative to the client area (excludes title bar and borders).
     This is the one to use for clicking controls inside the window."""
     return win32gui.ScreenToClient(handle, win32gui.GetCursorPos())
+
+
+def get_top_windows() -> list:
+    """[(handle, title), ...] for every visible top-level window that has a title."""
+    result = []
+
+    def callback(hwnd, _):
+        if win32gui.IsWindowVisible(hwnd):
+            title = win32gui.GetWindowText(hwnd)
+            if title:
+                result.append((hwnd, title))
+
+    win32gui.EnumWindows(callback, None)
+    return result

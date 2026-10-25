@@ -1,0 +1,6 @@
+pywinauto
+pywin32
+keyboard
+pytesseract
+pillow
+dearpygui
