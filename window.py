@@ -1,10 +1,9 @@
-import pywinauto
 import win32gui
+import re
+
 from dataclasses import dataclass, field
 from pywinauto import findwindows
 from pywinauto.controls.hwndwrapper import HwndWrapper
-
-import push_error
 
 @dataclass
 class WindowInfo:
@@ -20,6 +19,13 @@ class WindowInfo:
     bounds: tuple = field(default_factory=tuple)
     mouse_pos_relative: tuple = field(default_factory=tuple)
     mouse_pos_client: tuple = field(default_factory=tuple)
+
+
+def _find_handles(title: str, regex: bool = False) -> list[int]:
+      if regex:
+          return findwindows.find_windows(title_re=title)
+      return findwindows.find_windows(title_re=re.escape(title))
+
 
 def get_window_by_wrapper(wrapper:HwndWrapper) -> WindowInfo:
     """Build a WindowInfo from a pywinauto wrapper (window or child control).
@@ -47,11 +53,7 @@ def get_window_by_wrapper(wrapper:HwndWrapper) -> WindowInfo:
     )
 
 def get_window_info_by_title(window_title: str) -> WindowInfo:
-    handles = findwindows.find_windows(title=window_title)
-
-    push_error.push_error_if(
-        not handles, f"Window not found: {window_title}"
-    )
+    handles = _find_handles(window_title, regex=False)
 
     if not handles:
         return None
@@ -60,9 +62,9 @@ def get_window_info_by_title(window_title: str) -> WindowInfo:
 
 def get_child_windows(window_title: str) -> list:
     """WindowInfo for every child control of the window with this title."""
-    handles = findwindows.find_windows(title=window_title)
-    if not handles:
-        push_error.push_error(f"Could not find Child windows; Window not found: {window_title}")
+    handles = _find_handles(window_title, regex=False)
+
+    if len(handles) == 0:
         return []
     
     parent = HwndWrapper(handles[0])
