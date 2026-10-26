@@ -60,6 +60,8 @@ def _summary(name, value):
             parts.append(f'"{title}"')
         if class_name:
             parts.append(f"<{class_name}>")
+        if getattr(value, "is_closest_to_mouse", False):
+            parts.append("<-- closest")
         return " ".join(parts)
     return ""
 

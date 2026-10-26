@@ -92,7 +92,9 @@ def get_window_by_wrapper(wrapper, child_depth: int) -> WindowInfo:
 def _build_children(wrapper, child_depth: int) -> list[WindowInfo]:
     if child_depth <= 0:
         return []
-    return [get_window_by_wrapper(child, child_depth - 1) for child in wrapper.children()]
+    children = [get_window_by_wrapper(child, child_depth - 1) for child in wrapper.children()]
+    mark_closest(children)
+    return children
 
 
 
@@ -113,3 +115,31 @@ def get_window_info_by_title(window_title: str, regex: bool = False) -> WindowIn
 def get_child_windows(window_title: str, regex: bool = False, depth: int = 1) -> list[WindowInfo]:
     handle = find_handle(window_title, regex)
     return get_child_windows_of(handle, depth) if handle else []
+
+# ###
+#   
+# ####
+def _closest_key(info: WindowInfo):
+    left, top, right, bottom = info.bounds
+    return (info.distance_to_mouse, (right - left) * (bottom - top))   # tie -> smaller window
+
+
+def mark_closest(windows: list[WindowInfo]) -> None:
+    """Flag the visible window in this list nearest to the cursor; clear the rest."""
+    for w in windows:
+        w.is_closest_to_mouse = False
+    visible = [w for w in windows if w.is_visible]
+    if visible:
+        min(visible, key=_closest_key).is_closest_to_mouse = True
+
+
+def flatten(windows: list[WindowInfo]):
+    for w in windows:
+        yield w
+        yield from flatten(w.children)
+
+
+def find_closest(windows: list[WindowInfo]) -> WindowInfo | None:
+    """Closest visible window anywhere in the tree."""
+    visible = [w for w in flatten(windows) if w.is_visible]
+    return min(visible, key=_closest_key) if visible else None

@@ -1,6 +1,6 @@
 """seamaq_formbot.py - main loop for the GigaTest form-filling bot."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from time import sleep
 
 import keyboard
@@ -22,6 +22,7 @@ CHILD_DEPTH = 4   # levels of child controls to scan (1 = direct children only)
 class State:
     should_exit: bool = False
     mouse_pos: tuple = ()
+    closest_window: "window.WindowInfo | None" = None
     target_window_title: str = DEFAULT_TARGET_TITLE
     target_window: "window.WindowInfo | None" = None
     test_windows_array: list = field(default_factory=list)
@@ -83,6 +84,10 @@ class FormBot:
         s.target_window = window.get_window_info(handle) if handle else None
         s.test_windows_array = window.get_child_windows_of(handle, CHILD_DEPTH) if handle else []
         s.mouse_pos = Mouse.get_mouse_pos()
+
+        closest = window.find_closest(s.test_windows_array)
+        s.closest_window = replace(closest, children=[]) if closest else None
+
         s.counter += 1
 
     def _check_errors(self):
