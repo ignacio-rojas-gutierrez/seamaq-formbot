@@ -23,6 +23,8 @@ class WindowInfo:
     bounds: tuple = ()
     mouse_pos_relative: tuple = ()
     mouse_pos_client: tuple = ()
+    distance_to_mouse: float = 0.0
+    is_closest_to_mouse: bool = False
     children: list = field(default_factory=list)   # list[WindowInfo]
 
 
@@ -72,6 +74,17 @@ def get_mouse_pos_client(handle: int, cursor: tuple | None = None) -> tuple:
     return win32gui.ScreenToClient(handle, cursor or win32gui.GetCursorPos())
 
 
+def get_distance_to_rect(point: tuple, rect: tuple) -> float:
+    """Distance in pixels from a point to a (left, top, right, bottom) rectangle; 0 if inside."""
+    x, y = point
+    left, top, right, bottom = rect
+
+    dx = max(left - x, 0, x - right)
+    dy = max(top - y, 0, y - bottom)
+
+    return (dx**2 + dy**2)**0.5
+
+
 # ---- window info -----------------------------------------------------------
 def get_window_by_wrapper(wrapper, child_depth: int) -> WindowInfo:
     """Build a WindowInfo from a pywinauto wrapper (window or child control).
@@ -97,6 +110,7 @@ def get_window_by_wrapper(wrapper, child_depth: int) -> WindowInfo:
         bounds=(rect.left, rect.top, rect.right, rect.bottom),
         mouse_pos_relative=get_mouse_pos_relative(handle, cursor),
         mouse_pos_client=get_mouse_pos_client(handle, cursor),
+        distance_to_mouse=round(get_distance_to_rect(cursor, (rect.left, rect.top, rect.right, rect.bottom)), 1),
         children=_build_children(wrapper, child_depth),
     )
 
