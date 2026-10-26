@@ -5,6 +5,7 @@ from time import sleep
 
 import keyboard
 
+from overlay import Overlay
 import push_error
 import window
 from ui_dearpygui import StateWindow
@@ -54,6 +55,9 @@ class FormBot:
             window_provider=window.get_top_windows,
             on_window_selected=self.set_target_title,
         )
+
+        self.overlay = Overlay()
+
         self.ui.log("Application Started")
 
     def _stop(self):
@@ -87,6 +91,8 @@ class FormBot:
 
         closest = window.find_closest(s.test_windows_array)
         s.closest_window = replace(closest, children=[]) if closest else None
+
+        self.overlay.draw([(closest.bounds, "red")] if closest else [])  # draw rectangle around closest window
 
         s.counter += 1
 
