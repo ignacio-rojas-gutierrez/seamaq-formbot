@@ -64,7 +64,7 @@ def _summary(name, value):
     return ""
 
 
-def build_rows(obj, path="", depth=0, max_depth=5):
+def build_rows(obj, path="", depth=0, max_depth=16):
     """Flatten a nested state into rows: (path, name, kind, text, depth)."""
     rows = []
     for name, value in _children(obj) or []:

@@ -23,6 +23,7 @@ class WindowInfo:
     bounds: tuple = ()
     mouse_pos_relative: tuple = ()
     mouse_pos_client: tuple = ()
+    children: list = field(default_factory=list)   # list[WindowInfo]
 
 
 # ---- finding windows -------------------------------------------------------
@@ -72,7 +73,7 @@ def get_mouse_pos_client(handle: int, cursor: tuple | None = None) -> tuple:
 
 
 # ---- window info -----------------------------------------------------------
-def get_window_by_wrapper(wrapper) -> WindowInfo:
+def get_window_by_wrapper(wrapper, child_depth: int) -> WindowInfo:
     """Build a WindowInfo from a pywinauto wrapper (window or child control).
     Also accepts a WindowSpecification, e.g. app.window(...) or dlg.child_window(...)."""
     if hasattr(wrapper, "wrapper_object"):
@@ -96,17 +97,25 @@ def get_window_by_wrapper(wrapper) -> WindowInfo:
         bounds=(rect.left, rect.top, rect.right, rect.bottom),
         mouse_pos_relative=get_mouse_pos_relative(handle, cursor),
         mouse_pos_client=get_mouse_pos_client(handle, cursor),
+        children=_build_children(wrapper, child_depth),
     )
 
 
-def get_window_info(handle: int) -> WindowInfo:
-    """WindowInfo for a window or control given its handle."""
-    return get_window_by_wrapper(HwndWrapper(handle))
+
+def _build_children(wrapper, child_depth: int) -> list[WindowInfo]:
+    if child_depth <= 0:
+        return []
+    return [get_window_by_wrapper(child, child_depth - 1) for child in wrapper.children()]
 
 
-def get_child_windows_of(handle: int) -> list[WindowInfo]:
-    """WindowInfo for every child control of the window with this handle."""
-    return [get_window_by_wrapper(child) for child in HwndWrapper(handle).children()]
+
+def get_window_info(handle: int, child_depth: int = 0) -> WindowInfo:
+    return get_window_by_wrapper(HwndWrapper(handle), child_depth)
+
+
+
+def get_child_windows_of(handle: int, depth: int = 1) -> list[WindowInfo]:
+    return [get_window_by_wrapper(child, depth - 1) for child in HwndWrapper(handle).children()]
 
 
 def get_window_info_by_title(window_title: str, regex: bool = False) -> WindowInfo | None:
@@ -114,7 +123,6 @@ def get_window_info_by_title(window_title: str, regex: bool = False) -> WindowIn
     return get_window_info(handle) if handle else None
 
 
-def get_child_windows(window_title: str, regex: bool = False) -> list[WindowInfo]:
-    """WindowInfo for every child control of the window with this title."""
+def get_child_windows(window_title: str, regex: bool = False, depth: int = 1) -> list[WindowInfo]:
     handle = find_handle(window_title, regex)
-    return get_child_windows_of(handle) if handle else []
+    return get_child_windows_of(handle, depth) if handle else []

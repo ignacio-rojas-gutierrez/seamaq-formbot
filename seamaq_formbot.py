@@ -13,7 +13,7 @@ from ui_dearpygui import StateWindow
 # so do not put regex like ".*" here. It can be changed at runtime from the UI dropdown.
 DEFAULT_TARGET_TITLE = "GigaTest"
 FRAME_TIME = 1 / 60
-
+CHILD_DEPTH = 4   # levels of child controls to scan (1 = direct children only)
 
 @dataclass
 class State:
@@ -43,7 +43,7 @@ class FormBot:
 
     def _start(self):
         keyboard.on_press_key("esc", lambda _e: self.request_exit())
-        self.state.target_window = self._find_target_window()
+        self.state.target_window = window.get_window_info_by_title(self.state.target_window_title)
         self.ui = StateWindow(
             self.state,
             on_close=self.request_exit,
@@ -76,8 +76,9 @@ class FormBot:
 
     def _update_state(self):
         s = self.state
-        s.target_window = self._find_target_window()
-        s.test_windows_array = window.get_child_windows(s.target_window_title)
+        handle = self._find_target_handle()          # one search per frame
+        s.target_window = window.get_window_info(handle) if handle else None
+        s.test_windows_array = window.get_child_windows_of(handle, CHILD_DEPTH) if handle else []
         s.mouse_pos = window.get_mouse_pos()
         s.counter += 1
 
@@ -87,6 +88,9 @@ class FormBot:
             f"Target window '{self.state.target_window_title}' not found.",
         )
         self.state.error_list = list(push_error.get_error_list())  # copy, not alias
+
+    def _find_target_handle(self):
+        return window.find_handle(self.state.target_window_title)  
 
 
 def run():
