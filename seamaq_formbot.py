@@ -9,6 +9,9 @@ import push_error
 import window
 from ui_dearpygui import StateWindow
 
+from mouse import Mouse
+
+
 # Default window to target. Matched as a literal prefix (see window._find_handles),
 # so do not put regex like ".*" here. It can be changed at runtime from the UI dropdown.
 DEFAULT_TARGET_TITLE = "GigaTest"
@@ -79,7 +82,7 @@ class FormBot:
         handle = self._find_target_handle()          # one search per frame
         s.target_window = window.get_window_info(handle) if handle else None
         s.test_windows_array = window.get_child_windows_of(handle, CHILD_DEPTH) if handle else []
-        s.mouse_pos = window.get_mouse_pos()
+        s.mouse_pos = Mouse.get_mouse_pos()
         s.counter += 1
 
     def _check_errors(self):
