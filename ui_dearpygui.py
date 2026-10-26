@@ -82,7 +82,7 @@ def build_rows(obj, path="", depth=0, max_depth=16):
 
 
 class StateWindow:
-    def __init__(self, state, title="Program state", on_close=None, start_open=True, window_provider=None, on_window_selected=None):
+    def __init__(self, state, title="Seamaq", on_close=None, start_open=True, window_provider=None, on_window_selected=None):
         self.state = state
         self.closed = False
         self._on_close = on_close
