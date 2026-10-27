@@ -133,13 +133,32 @@ def mark_closest(windows: list[WindowInfo]) -> None:
         min(visible, key=_closest_key).is_closest_to_mouse = True
 
 
-def flatten(windows: list[WindowInfo]):
+def _flatten(windows: list[WindowInfo]):
     for w in windows:
         yield w
-        yield from flatten(w.children)
+        yield from _flatten(w.children)
 
 
 def find_closest(windows: list[WindowInfo]) -> WindowInfo | None:
     """Closest visible window anywhere in the tree."""
-    visible = [w for w in flatten(windows) if w.is_visible]
+    visible = [w for w in _flatten(windows) if w.is_visible]
     return min(visible, key=_closest_key) if visible else None
+
+
+def _flatten_with_depth(windows, depth:int=0):
+    for w in windows:
+        yield (w, depth)
+        yield from _flatten_with_depth(w.children, depth + 1)
+
+
+def _area(bounds: tuple) -> int:
+    left, top, right, bottom = bounds
+    return (right - left) * (bottom - top)
+
+
+def find_closest_with_depth(windows):
+    visible = [(w, d) for w, d in _flatten_with_depth(windows) if w.is_visible]
+    if not visible:
+        return None
+    best, _depth = min(visible, key=lambda wd: (wd[0].distance_to_mouse, -wd[1], _area(wd[0].bounds)))  # tie -> deeper, then smaller
+    return best

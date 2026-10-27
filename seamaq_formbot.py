@@ -89,7 +89,7 @@ class FormBot:
         s.test_windows_array = window.get_child_windows_of(handle, CHILD_DEPTH) if handle else []
         s.mouse_pos = Mouse.get_mouse_pos()
 
-        closest = window.find_closest(s.test_windows_array)
+        closest = window.find_closest_with_depth(s.test_windows_array)
         s.closest_window = replace(closest, children=[]) if closest else None
 
         self.overlay.draw([(closest.bounds, "red")] if closest else [])  # draw rectangle around closest window
