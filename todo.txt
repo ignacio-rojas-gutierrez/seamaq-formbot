@@ -1,3 +1,5 @@
 
 - [x] Resolver este error: (1400, 'GetWindowRect', 'El identificador de la ventana no es válido.')
 - [ ] Optimizar aplicación para que no consuma tantos recursos al obtener información todas las ventanas.
+- [ ] Leer capturas de pantalla
+- [ ] Validar capturas de pantalla que contengan ventanas específicas abiertas usando enums
