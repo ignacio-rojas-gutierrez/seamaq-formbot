@@ -16,8 +16,8 @@ from mouse import Mouse
 # Default window to target. Matched as a literal prefix (see window._find_handles),
 # so do not put regex like ".*" here. It can be changed at runtime from the UI dropdown.
 DEFAULT_TARGET_TITLE = "GigaTest"
-FRAME_TIME = 1 / 60
-CHILD_DEPTH = 4   # levels of child controls to scan (1 = direct children only)
+FRAME_TIME = 1 / 20
+CHILD_DEPTH = 2   # levels of child controls to scan (1 = direct children only)
 
 @dataclass
 class State:
@@ -86,6 +86,7 @@ class FormBot:
         s = self.state
         handle = self._find_target_handle()          # one search per frame
         s.target_window = window.get_window_info(handle) if handle else None
+
         s.test_windows_array = window.get_child_windows_of(handle, CHILD_DEPTH) if handle else []
         s.mouse_pos = Mouse.get_mouse_pos()
 

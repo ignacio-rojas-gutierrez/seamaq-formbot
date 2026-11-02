@@ -1,0 +1,3 @@
+entrar_inspeccion_button_relative_position = (53, 186)
+salir_inspeccion_button_relative_position= (18, 352)
+entrar_frenos_button_relative_position = (340, 652)

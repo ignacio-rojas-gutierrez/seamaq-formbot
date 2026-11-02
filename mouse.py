@@ -1,5 +1,8 @@
 import win32gui
 
+def _is_invalid_window_error(error: OSError) -> bool:
+    return getattr(error, "winerror", None) == 1400
+
 class Mouse:
     @staticmethod
     def get_mouse_pos() -> tuple:
@@ -9,14 +12,30 @@ class Mouse:
     @staticmethod
     def get_mouse_pos_relative(handle: int, cursor: tuple | None = None) -> tuple:
         """Mouse position relative to the window's top-left corner (includes title bar and borders)."""
+        if not win32gui.IsWindow(handle):
+            return [0, 0, 0, 0]
+        
         mx, my = cursor or win32gui.GetCursorPos()
+        
+        """ try:
+            is_window = win32gui.IsWindow(handle)
+            left, top, _right, _bottom = win32gui.GetWindowRect(handle)
+            return (mx - left, my - top)
+        except OSError as error:
+            if _is_invalid_window_error(error):
+                return [0, 0, 0, 0]
+         """
+        
         left, top, _right, _bottom = win32gui.GetWindowRect(handle)
         return (mx - left, my - top)
+
 
     @staticmethod
     def get_mouse_pos_client(handle: int, cursor: tuple | None = None) -> tuple:
         """Mouse position relative to the client area (excludes title bar and borders).
         This is the one to use for clicking controls inside the window."""
+        if not win32gui.IsWindow(handle):
+            return [0, 0]
         return win32gui.ScreenToClient(handle, cursor or win32gui.GetCursorPos())
 
     @staticmethod
