@@ -112,6 +112,14 @@ def _preprocess(image: PIL.Image.Image, scale: int) -> PIL.Image.Image:
         image = image.resize((image.width * scale, image.height * scale), PIL.Image.Resampling.LANCZOS)
     return image
 
+def check_decimals(text: str, decimals: int | None) -> bool:
+    """True if the raw OCR text is consistent with the expected decimals."""
+    if decimals is None or not text:
+        return True
+    m = re.search(r"[.,](\d+)$", text)
+    if not m:
+        return True            # separator lost: can't verify, trust the table
+    return len(m.group(1)) == decimals
 
 def read_words(
     shot: Screenshot,
@@ -195,7 +203,7 @@ def read_boxes(shot: Screenshot, region: tuple) -> list[dict]:
         img = _make_crop(shot, bounds, trim=2)          # trims, inverts dark boxes
         text = _ocr_box(img)
         dec = DECIMALS[i] if i < len(DECIMALS) else None
-        out.append({"bounds": bounds, "text": text, "value": normalize(text, dec)})
+        out.append({"bounds": bounds, "text": text, "value": normalize(text, dec), "suspect": not check_decimals(text, dec)})
     return out
 
 def dump_crops(shot: Screenshot, results: list[dict], indices: list[int],
