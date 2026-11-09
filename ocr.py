@@ -4,13 +4,15 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import overload
+import itertools
 
 import pytesseract
 import win32gui
 import cv2
 import numpy as np
 #from PIL import Image, ImageGrab, ImageOps
-import PIL.Image, PIL.ImageGrab, PIL.ImageOps, PIL.ImageStat
+import PIL.Image, PIL.ImageGrab, PIL.ImageOps, PIL.ImageStat, PIL.ImageDraw
+
 from pytesseract import Output
 
 
@@ -66,6 +68,28 @@ class Screenshot:
         )
         return Screenshot(self.image.crop(box), (ox + box[0], oy + box[1]))
 
+
+
+# decimals per box index (None = skip, e.g. empty-by-design or extras)
+DECIMALS = (
+    [None, None, 2]            # Fecha, Hora, Deriva
+    + [2] * 6                  # Suspensión: adherencia izq/der, diferencia
+    + [0] * 6                  # Peso
+    + [2] * 12                 # Fuerza izq / der
+    + [2]                      # Eficiencia total
+    + [2] * 12                 # Diferencia / Eficiencia frenos
+    + [0, 2, 2, 1]             # HC, Humo, CO, Ruido
+    # + [None, None]
+)
+
+def normalize(text: str, decimals: int | None) -> str:
+    if decimals is None or not text:
+        return text
+    digits = text.replace(".", "").replace(",", "")
+    if decimals == 0:
+        return digits
+    digits = digits.rjust(decimals + 1, "0")
+    return f"{digits[:-decimals]},{digits[-decimals:]}"
 
 # ---- stage 1: raw capture (no processing, no filtering) ----------------------
 def capture_raw(save: bool = True) -> Screenshot:
@@ -300,3 +324,58 @@ def diagnose(shot: Screenshot, results: list[dict], indices: list[int],
                     found = [(t_, round(float(c))) for t_, c in zip(d["text"], d["conf"])
                              if t_.strip()]
                     print(f"  {lang} psm={psm:<2} wl={'Y' if use_wl else 'N'} -> {found}")
+
+
+
+# index -> expected text (Fecha/Hora skipped; "" = must stay empty)
+EXPECTED = {
+    2: "0,36",
+    3: "71,09", 4: "53,23", 5: "65,94", 6: "46,05", 7: "7,24", 8: "13,49",
+    9: "648", 10: "405", 11: "0", 12: "0", 13: "1053", 14: "1053",
+    15: "1,82", 16: "1,02", 17: "0,00", 18: "0,00", 19: "1,02", 20: "0,00",
+    21: "1,72", 22: "1,13", 23: "0,00", 24: "0,00", 25: "0,98", 26: "0,00",
+    27: "55,28",
+    28: "5,53", 29: "9,97", 30: "", 31: "", 32: "3,61", 33: "",
+    34: "55,81", 35: "54,31", 36: "0,00", 37: "0,00", 38: "19,40", 39: "0,00",
+    40: "6", 41: "0,00", 42: "0,19", 43: "0,0",
+}
+
+def _make_crop(shot, bounds, trim):
+    l, t, r, b = bounds
+    img = shot.crop((l + trim, t + trim, r - trim, b - trim)).image.convert("RGB")
+    if PIL.ImageStat.Stat(PIL.ImageOps.grayscale(img)).mean[0] < 128:
+        img = PIL.ImageOps.invert(img)
+    return img
+
+def _ocr_variant(img, lang, scale, resample, thr):
+    img = PIL.ImageOps.expand(img, border=6, fill="white")
+    img = PIL.ImageOps.autocontrast(PIL.ImageOps.grayscale(img))
+    img = img.resize((img.width * scale, img.height * scale), resample)
+    if thr is not None:
+        img = img.point(lambda p: 255 if p > thr else 0)
+    data = pytesseract.image_to_data(img, lang=lang, config="--psm 7",
+                                     output_type=Output.DICT)
+    text = "".join(t.strip() for t in data["text"] if t.strip())
+    return re.sub(r"[^\d,.]", "", text)
+
+def benchmark(shot, boxes):
+    """boxes = output of read_boxes (we only use the bounds)."""
+    grid = itertools.product(
+        ("eng", "spa"), (3, 4, 6), (PIL.Image.NEAREST, PIL.Image.BICUBIC), (None, 140), (2, 3))
+    scores = []
+    for lang, scale, res, thr, trim in grid:
+        wrong = []
+        for i, exp in EXPECTED.items():
+            img = _make_crop(shot, boxes[i]["bounds"], trim)
+            got = normalize(_ocr_variant(img, lang, scale, res, thr), DECIMALS[i])
+            if got != exp:
+                wrong.append((i, exp, got))
+        cfg = f"{lang} x{scale} {'NEAREST' if res == PIL.Image.NEAREST else 'BICUBIC'} thr={thr} trim={trim}"
+        scores.append((len(wrong), cfg, wrong))
+        print(f"{len(EXPECTED) - len(wrong)}/{len(EXPECTED)}  {cfg}")
+
+    scores.sort(key=lambda s: s[0])
+    best = scores[0]
+    print(f"\nBEST: {best[1]}  ({len(EXPECTED) - best[0]}/{len(EXPECTED)})")
+    for i, exp, got in best[2]:
+        print(f"  [{i:02d}] expected {exp!r}, got {got!r}")
