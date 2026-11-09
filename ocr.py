@@ -76,7 +76,7 @@ DECIMALS = (
     + [2] * 12                 # Diferencia / Eficiencia frenos
     + [0, 2, 2, 1]             # HC, Humo, CO, Ruido
     # + [None, None]
-)
+)   
 
 def normalize(text: str, decimals: int | None) -> str:
     if decimals is None or not text:
