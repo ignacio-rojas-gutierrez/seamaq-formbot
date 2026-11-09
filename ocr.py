@@ -206,6 +206,20 @@ def read_boxes(shot: Screenshot, region: tuple) -> list[dict]:
         out.append({"bounds": bounds, "text": text, "value": normalize(text, dec), "suspect": not check_decimals(text, dec)})
     return out
 
+def get_suspect_boxes(boxes) -> list[dict]:
+    out = []
+    for box in boxes:
+        if box['suspect']:
+            out.append(box)
+
+    return out
+
+def get_suspect_boxes_indexes(boxes):
+    out = []
+    for i, _ in enumerate(boxes):
+        if box['suspect']:
+            out.append(i)
+    return out
 
 # ---- DEBUGGING / TESTING ---------------------------------------------------------
 
