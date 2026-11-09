@@ -54,10 +54,6 @@ class Screenshot:
         self.image = image
         self.origin = origin if origin is not None else (0, 0)
 
-    def __init__(self, image: PIL.Image.Image, origin: tuple[int, int]):
-        self.image = image
-        self.origin = origin
-
     def crop(self, bounds: tuple) -> "Screenshot":
         """Crop to (left, top, right, bottom) given in SCREEN coordinates."""
         ox, oy = self.origin
