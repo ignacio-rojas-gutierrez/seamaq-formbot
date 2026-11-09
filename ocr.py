@@ -206,6 +206,9 @@ def read_boxes(shot: Screenshot, region: tuple) -> list[dict]:
         out.append({"bounds": bounds, "text": text, "value": normalize(text, dec), "suspect": not check_decimals(text, dec)})
     return out
 
+
+# ---- DEBUGGING / TESTING ---------------------------------------------------------
+
 def dump_crops(shot: Screenshot, results: list[dict], indices: list[int],
                trim: int = 2, scale: int = 6, view_scale: int = 6) -> Path:
     """For each index, save a row of 4 stages to temp/boxes/ plus one contact sheet:
@@ -261,7 +264,6 @@ def dump_crops(shot: Screenshot, results: list[dict], indices: list[int],
     print(f"saved -> {path}")
     return path
 
-# ---- DEBUGGING / TESTING ---------------------------------------------------------
 def debug_boxes(shot: Screenshot, region: tuple, results: list[dict] | None = None,
                 scale: int = 3, name: str = "debug_boxes.png") -> Path:
     """Draw every detected box with its index over the region and save it to temp/.
