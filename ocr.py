@@ -188,3 +188,116 @@ def read_boxes(shot: Screenshot, region: tuple | None = None) -> list[dict]:
         # out.append({"bounds": b, "text": _ocr_box(crop)})     # CHANGED
         out.append({"text": _ocr_box(crop), "bounds": b})     # CHANGED
     return out
+
+def dump_crops(shot: Screenshot, results: list[dict], indices: list[int],
+               trim: int = 2, scale: int = 6, view_scale: int = 6) -> Path:
+    """For each index, save a row of 4 stages to temp/boxes/ plus one contact sheet:
+       1. context : the box with 4 px of surroundings (is the box where we think?)
+       2. raw     : the exact crop after the trim
+       3. inverted: after the dark-background check
+       4. final   : what Tesseract receives (padding + grayscale + contrast + upscale)"""
+    out_dir = TEMP_PATH / "boxes"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    rows = []
+    for i in indices:
+        l, t, r, b = results[i]["bounds"]
+        context = shot.crop((l - 4, t - 4, r + 4, b + 4)).image.convert("RGB")
+        raw = shot.crop((l + trim, t + trim, r - trim, b - trim)).image.convert("RGB")
+
+        brightness = PIL.ImageStat.Stat(PIL.ImageOps.grayscale(raw)).mean[0]
+        inverted = PIL.ImageOps.invert(raw) if brightness < 128 else raw
+        final = _preprocess(PIL.ImageOps.expand(inverted, border=6, fill="white"), scale)
+
+        print(f"[{i:02d}] box={r - l}x{b - t}  crop={raw.width}x{raw.height}  "
+              f"brightness={brightness:.0f}  inverted={brightness < 128}  "
+              f"text={results[i]['text']!r}")
+
+        stages = [context, raw, inverted, final.convert("RGB")]
+        for name, img in zip(("context", "raw", "inverted", "final"), stages):
+            img.save(out_dir / f"{i:02d}_{name}.png")
+        rows.append((i, stages))
+
+    # contact sheet: every stage scaled to the same height, NEAREST so pixels stay visible
+    row_h = 40 * view_scale // 3
+    sheet_rows = []
+    for i, stages in rows:
+        tiles = []
+        for img in stages:
+            w = max(1, round(img.width * row_h / img.height))
+            tiles.append(img.resize((w, row_h), PIL.Image.NEAREST))
+        sheet_rows.append((i, tiles))
+
+    width = max(sum(t.width + 8 for t in tiles) for _, tiles in sheet_rows) + 50
+    sheet = PIL.Image.new("RGB", (width, len(sheet_rows) * (row_h + 8)), (60, 60, 60))
+    draw = PIL.ImageDraw.Draw(sheet)
+    for n, (i, tiles) in enumerate(sheet_rows):
+        y, x = n * (row_h + 8), 4
+        draw.text((x, y + 2), f"{i:02d}", fill="yellow")
+        x += 30
+        for tile in tiles:
+            sheet.paste(tile, (x, y))
+            x += tile.width + 8
+
+    path = out_dir / "contact_sheet.png"
+    sheet.save(path)
+    print(f"saved -> {path}")
+    return path
+
+# ---- DEBUGGING / TESTING ---------------------------------------------------------
+def debug_boxes(shot: Screenshot, region: tuple, results: list[dict] | None = None,
+                scale: int = 3, name: str = "debug_boxes.png") -> Path:
+    """Draw every detected box with its index over the region and save it to temp/.
+    Without results: all boxes are green.
+    With results (output of read_boxes): green = text read, red = empty,
+    and the text is drawn next to the index."""
+    crop = shot.crop(region)
+    img = crop.image.convert("RGB").resize(
+        (crop.image.width * scale, crop.image.height * scale), PIL.Image.NEAREST)
+    draw = PIL.ImageDraw.Draw(img)
+    ox, oy = crop.origin
+
+    boxes = [r["bounds"] for r in results] if results else find_boxes(shot, region)
+    for i, (l, t, r, b) in enumerate(boxes):
+        text = results[i]["text"] if results else ""
+        color = "red" if results and not text else "lime"
+
+        # screen coords -> position in the upscaled debug image
+        x0, y0 = (l - ox) * scale, (t - oy) * scale
+        x1, y1 = (r - ox) * scale, (b - oy) * scale
+        draw.rectangle((x0, y0, x1, y1), outline=color, width=2)
+
+        label = f"{i}" + (f":{text}" if text else "")
+        # label sits above the box on a dark background so it stays readable
+        tw = draw.textlength(label)
+        draw.rectangle((x0, y0 - 12, x0 + tw + 4, y0), fill="black")
+        draw.text((x0 + 2, y0 - 12), label, fill=color)
+
+    TEMP_PATH.mkdir(exist_ok=True)
+    path = TEMP_PATH / name
+    img.save(path)
+    print(f"{len(boxes)} boxes detected -> {path}")
+    return path
+
+def diagnose(shot: Screenshot, results: list[dict], indices: list[int],
+             trim: int = 2, scale: int = 6):
+    """Run Tesseract on the final image of each box and print the raw output,
+    with no pattern or confidence filtering, across lang / psm / whitelist."""
+    WL = "-c tessedit_char_whitelist=0123456789,./:"
+    for i in indices:
+        l, t, r, b = results[i]["bounds"]
+        raw = shot.crop((l + trim, t + trim, r - trim, b - trim)).image.convert("RGB")
+        if PIL.ImageStat.Stat(PIL.ImageOps.grayscale(raw)).mean[0] < 128:
+            raw = PIL.ImageOps.invert(raw)
+        img = _preprocess(PIL.ImageOps.expand(raw, border=6, fill="white"), scale)
+
+        print(f"\n[{i:02d}] expected-ish: {results[i]['text']!r}")
+        for lang in ("spa", "eng"):
+            for psm in (7, 8, 13):
+                for use_wl in (False, True):
+                    cfg = f'--psm {psm}' + (f" {WL}" if use_wl else "")
+                    d = pytesseract.image_to_data(img, lang=lang, config=cfg,
+                                                  output_type=Output.DICT)
+                    found = [(t_, round(float(c))) for t_, c in zip(d["text"], d["conf"])
+                             if t_.strip()]
+                    print(f"  {lang} psm={psm:<2} wl={'Y' if use_wl else 'N'} -> {found}")
