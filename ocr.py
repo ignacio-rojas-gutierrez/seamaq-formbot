@@ -182,34 +182,24 @@ def find_boxes(shot: Screenshot, region: tuple,
     boxes = sorted(set(boxes), key=lambda b: (round(b[1] / 8), b[0]))   # rows, then columns
     return boxes
 
-def _ocr_box(crop: Screenshot) -> str:
-    img = PIL.ImageOps.expand(crop.image.convert("RGB"), border=6, fill="white")
-    padded = Screenshot(img, crop.origin)
-    for psm in (7, 8, 13):                       # line, word, raw line
-        words = read_words(
-            padded, psm=psm, scale=6, min_conf=0,
-            pattern=r"[\d/:.,]+",
-            extra_config="-c tessedit_char_whitelist=0123456789,.",
-
-        )
-        if words:
-            return "".join(w["text"] for w in words)
-    return ""
+def _ocr_box(img: PIL.Image.Image, lang: str = "spa", scale: int = 4) -> str:
+    """img: the trimmed (and inverted if dark) box crop, as a PIL image."""
+    img = PIL.ImageOps.expand(img.convert("RGB"), border=6, fill="white")
+    img = PIL.ImageOps.autocontrast(PIL.ImageOps.grayscale(img))
+    img = img.resize((img.width * scale, img.height * scale), PIL.Image.BICUBIC)
+    data = pytesseract.image_to_data(img, lang=lang, config="--psm 7",
+                                     output_type=Output.DICT)
+    text = "".join(t.strip() for t in data["text"] if t.strip())
+    return re.sub(r"[^\d,.]", "", text)   # keep only digits and separators
 
 
-def read_boxes(shot: Screenshot, region: tuple | None = None) -> list[dict]:
+def read_boxes(shot: Screenshot, region: tuple) -> list[dict]:
     out = []
-    for b in find_boxes(shot, region or (0, 0, shot.image.width, shot.image.height)):
-        inner = (b[0] + 2, b[1] + 2, b[2] - 2, b[3] - 2)
-        crop = shot.crop(inner)
-
-        # white-on-dark boxes (Fecha / Hora): invert
-        gray = PIL.ImageOps.grayscale(crop.image)
-        if PIL.ImageStat.Stat(gray).mean[0] < 128:
-            crop = Screenshot(PIL.ImageOps.invert(crop.image.convert("RGB")), crop.origin)
-
-        # out.append({"bounds": b, "text": _ocr_box(crop)})     # CHANGED
-        out.append({"text": _ocr_box(crop), "bounds": b})     # CHANGED
+    for i, bounds in enumerate(find_boxes(shot, region)):
+        img = _make_crop(shot, bounds, trim=2)          # trims, inverts dark boxes
+        text = _ocr_box(img)
+        dec = DECIMALS[i] if i < len(DECIMALS) else None
+        out.append({"bounds": bounds, "text": text, "value": normalize(text, dec)})
     return out
 
 def dump_crops(shot: Screenshot, results: list[dict], indices: list[int],
