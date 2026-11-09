@@ -48,11 +48,8 @@ class Screenshot:
     image: PIL.Image.Image
     origin: tuple[int, int]          # screen coords of the image's top-left pixel
 
-    def __init__(self, image_path_or_image, origin: tuple[int, int] | None = None):
-        if isinstance(image_path_or_image, PIL.Image.Image):
-            self.image = image_path_or_image
-        else:
-            self.image = PIL.Image.open(image_path_or_image)
+    def __init__(self, image: PIL.Image.Image, origin: tuple[int, int] | None = None):
+        self.image = image
         self.origin = origin if origin is not None else (0, 0)
 
     def __init__(self, image: PIL.Image.Image, origin: tuple[int, int]):
