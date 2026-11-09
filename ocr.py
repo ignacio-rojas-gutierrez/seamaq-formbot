@@ -36,7 +36,9 @@ TESSDATA = Path(r"C:/Program Files/Tesseract-OCR/tessdata")
 
 
 pytesseract.pytesseract.tesseract_cmd = str(TESSERACT)
-pytesseract.pytesseract.tessdata_dir = str(TESSDATA)
+#pytesseract.pytesseract.tessdata_dir = str(TESSDATA)
+os.environ["TESSDATA_PREFIX"] = str(TESSDATA)   # must point at the tessdata folder itself
+
 
 SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN = 76, 77
 
@@ -113,7 +115,7 @@ def read_words(
         _preprocess(shot.image, scale),
         lang=lang,
         #config=f'--tessdata-dir "{TESSDATA}" --psm {psm}',
-        config=f'"{TESSDATA}" --psm {psm} {extra_config}',
+        config=f' --psm {psm} {extra_config}',
         output_type=Output.DICT,
     )
 
