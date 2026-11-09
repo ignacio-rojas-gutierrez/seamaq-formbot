@@ -218,7 +218,7 @@ def get_suspect_boxes(boxes) -> list[dict]:
 def get_suspect_boxes_indexes(boxes):
     out = []
     for i, _ in enumerate(boxes):
-        if box['suspect']:
+        if boxes[i]['suspect']:
             out.append(i)
     return out
 
