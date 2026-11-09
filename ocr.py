@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import overload
 import itertools
+import fitz
 
 import pytesseract
 import win32gui
@@ -221,8 +222,19 @@ def get_suspect_boxes_indexes(boxes):
             out.append(i)
     return out
 
-# ---- DEBUGGING / TESTING ---------------------------------------------------------
 
+def load_pdf_page(path: str, page: int = 0, dpi: int = 200) -> Screenshot:
+    """Render one PDF page to a Screenshot. Origin (0, 0), so crop() and
+    read_words() work the same as with a screen capture."""
+    doc = fitz.open(path)
+    pix = doc[page].get_pixmap(dpi=dpi)
+    image = PIL.Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+    doc.close()
+    return Screenshot(image, (0, 0))
+
+
+
+# ---- DEBUGGING / TESTING ---------------------------------------------------------
 def dump_crops(shot: Screenshot, results: list[dict], indices: list[int],
                trim: int = 2, scale: int = 6, view_scale: int = 6) -> Path:
     """For each index, save a row of 4 stages to temp/boxes/ plus one contact sheet:
