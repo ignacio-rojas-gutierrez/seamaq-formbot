@@ -1,5 +1,19 @@
 
 - [x] Resolver este error: (1400, 'GetWindowRect', 'El identificador de la ventana no es válido.')
 - [ ] Optimizar aplicación para que no consuma tantos recursos al obtener información todas las ventanas.
-- [ ] Leer capturas de pantalla
+- [x] Leer capturas de pantalla
 - [ ] Validar capturas de pantalla que contengan ventanas específicas abiertas usando enums
+- [ ] Desarrollar la función de llenar los campos de los ensayos
+
+    - [ ] Obtener los valores de los ensayos desde el PDF de los ensayos
+        - [ ] Averiguar la forma de obtener el foco de la ventana de la previsualización del PDF de ensayos 
+        - [ ] Guardar el PDF desde ventana de la previsualización del PDF de ensayos
+            - [ ] Obtener la ubicación en pantalla del botón dibujado "print"
+            - [ ] Resolver el guardado del PDF
+                - [ ] Los PDF se guardan en un servidor de Windows 
+        - [ ] Leer el PDF de los ensayos
+    
+    - [ ] Con los valores de los ensayos en mano, llenar con los valores los campos de la página de ensayos
+        - [ ] Averiguar cómo acceder a estos campos de la página de ensayos.
+        
+- [ ] Desarrollar un apartado con el fin de comparar las imágenes de la Fotovalidación con las de la FCM
