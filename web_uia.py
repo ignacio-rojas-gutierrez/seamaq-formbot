@@ -46,6 +46,7 @@ class BrowserTabInfo:
 class FieldInfo:
     index: int = 0
     name: str = ""               # accessible name = usually the label of the field
+    auto_id: str = ""            # HTML id of the element (Chrome/Edge expose it as AutomationId)
     value: str = ""
     control_type: str = ""
     is_enabled: bool = False
@@ -126,9 +127,12 @@ def select_tab(win, text: str, settle: float = 0.3) -> BrowserTabInfo | None:
         try:
             tab.select()                  # UIA SelectionItem: no real mouse movement
         except Exception:
-            tab.click_input()             # fallback: real click on the tab
+            pass
         time.sleep(settle)                # let the browser swap the page tree
-        return BrowserTabInfo(index=i, title=tab.window_text(), is_active=True, bounds=_rect(tab))
+        if not _is_selected(tab):         # select() can "succeed" without switching (seen in Firefox)
+            tab.click_input()             # fallback: real click on the tab
+            time.sleep(settle)
+        return BrowserTabInfo(index=i, title=tab.window_text(), is_active=_is_selected(tab), bounds=_rect(tab))
     return None
 
 
@@ -165,26 +169,29 @@ def ensure_tab(win, title: str, url: str | None = None, timeout: float = 15.0) -
 
 
 # ---- page fields -----------------------------------------------------------
-def get_document(win):
-    """The page of the active tab (UIA 'Document' control), or None."""
-    best, best_area = None, 0
+def get_document(win, title: str | None = None):
+    """The page of the active tab (UIA 'Document' control), or None.
+    Documents of background tabs (offscreen) are ignored. If `title` is given, only
+    documents whose name (= page title) contains it are considered, when any match."""
+    docs = []
     for d in win.descendants(control_type="Document"):
+        if _is_offscreen(d):
+            continue
         left, top, right, bottom = _rect(d)
         area = (right - left) * (bottom - top)
-        if area > best_area:
-            best, best_area = d, area
-    return best
+        if area > 0:
+            docs.append((d, area))
+    if title:
+        named = [(d, a) for d, a in docs if title.lower() in (d.element_info.name or "").lower()]
+        if named:
+            docs = named
+    return max(docs, key=lambda x: x[1])[0] if docs else None
 
 
 def get_page_document(win, title: str | None = None):
     """The Document of the page whose name (= page title) contains `title`.
-    Falls back to the largest Document if none matches or no title is given."""
-    if title:
-        matches = [d for d in win.descendants(control_type="Document")
-                   if title.lower() in (d.element_info.name or "").lower()]
-        if matches:
-            return max(matches, key=lambda d: (lambda r: (r[2] - r[0]) * (r[3] - r[1]))(_rect(d)))
-    return get_document(win)
+    Falls back to the largest visible Document if none matches or no title is given."""
+    return get_document(win, title)
 
 
 def get_data_items(doc, with_cells: bool = False) -> list[RowInfo]:
@@ -197,9 +204,10 @@ def get_data_items(doc, with_cells: bool = False) -> list[RowInfo]:
     return rows
 
 
-def get_fields(win, control_types: tuple = FIELD_TYPES) -> list[FieldInfo]:
-    """Input fields of the active tab, with screen bounds."""
-    doc = get_document(win)
+def get_fields(win, control_types: tuple = FIELD_TYPES, title: str | None = None) -> list[FieldInfo]:
+    """Input fields of the active tab, with screen bounds.
+    title: page title text, to pick the right document if several are exposed."""
+    doc = get_document(win, title)
     if doc is None:
         return []
     fields = []
@@ -214,6 +222,7 @@ def get_fields(win, control_types: tuple = FIELD_TYPES) -> list[FieldInfo]:
             fields.append(FieldInfo(
                 index=len(fields),
                 name=el.element_info.name or "",
+                auto_id=el.element_info.automation_id or "",
                 value=value or "",
                 control_type=ct,
                 is_enabled=el.is_enabled(),
@@ -227,9 +236,19 @@ def get_fields(win, control_types: tuple = FIELD_TYPES) -> list[FieldInfo]:
     return fields
 
 
-def set_field_value(win, index: int, text: str, control_types: tuple = FIELD_TYPES) -> bool:
+def find_field(win, auto_id: str | None = None, name: str | None = None,
+               control_types: tuple = FIELD_TYPES, title: str | None = None) -> FieldInfo | None:
+    """First field whose HTML id (auto_id) or accessible name matches exactly, or None."""
+    for f in get_fields(win, control_types, title):
+        if (auto_id and f.auto_id == auto_id) or (name and f.name == name):
+            return f
+    return None
+
+
+def set_field_value(win, index: int, text: str, control_types: tuple = FIELD_TYPES,
+                    title: str | None = None) -> bool:
     """Write text into the field with this index (same order as get_fields)."""
-    doc = get_document(win)
+    doc = get_document(win, title)
     if doc is None:
         return False
     elements = []
@@ -250,7 +269,7 @@ def set_field_value(win, index: int, text: str, control_types: tuple = FIELD_TYP
 
 # ---- Lista de Planillas ----------------------------------------------------
 def lista(win=None, url: str = PLANILLAS_URL, title: str = PLANILLAS_TITLE,
-          with_cells: bool = False) -> list[RowInfo]:
+          with_cells: bool = False, print_output = False) -> list[RowInfo]:
     """Find the 'Lista de Planillas' tab (open it from `url` if missing) and read its rows."""
     win = win or find_browser_window("Firefox")
     if win is None:
@@ -263,10 +282,11 @@ def lista(win=None, url: str = PLANILLAS_URL, title: str = PLANILLAS_TITLE,
         raise RuntimeError("The tab has no page document (accessibility tree not ready?).")
 
     rows = get_data_items(doc, with_cells)
-    for row in rows:
-        print(repr(row.text), row.bounds)
-        if row.text == "":
-            print("/--------------------")
+    if print_output:
+        for row in rows:
+            print(repr(row.text), row.bounds)
+            if row.text == "":
+                print("/--------------------")
     return rows
 
 # ---- RTO (Página de Consulta) ----------------------------------------------------
@@ -310,7 +330,7 @@ def main():
             state += ", readonly"
         if not f.is_visible:
             state += ", hidden"
-        print(f"[{f.index}] <{f.control_type}> {f.name or '(no name)'} = {f.value!r}  [{state}]")
+        print(f"[{f.index}] <{f.control_type}> {f.name or '(no name)'} id={f.auto_id!r} = {f.value!r}  [{state}]")
         print(f"     screen={f.bounds}")
 
 
