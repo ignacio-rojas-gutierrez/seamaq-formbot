@@ -2,22 +2,23 @@ from time import sleep
 from pywinauto import Application
 import seamaq_formbot as seamaq_formbot
 import ocr
-import lista_de_planillas
-import rto
+import rto.rto_forms_list as rto_forms_list
+import rto.entry as entry
 import web_uia
+import tests.master_detail
+import dearpygui as dpg
 
-# Entry point
+from pywinauto.uia_defines import IUIA
+from pywinauto.uia_defines import get_elem_interface, NoPatternInterfaceError
+    
+# RTOEntry point
 def main():
     seamaq_formbot.run()
 
-
-
-
 if __name__ == "__main__":
-    lista = lista_de_planillas.ListaPlanillas()
+    forms_list = rto_forms_list.RTOFormsList()
+    forms_list.refresh("Firefox")
 
-    browser_win = web_uia.find_browser_window("Firefox")
-    data_items_raw = web_uia.get_data_items_by_title(browser_win, "Lista de Planillas")
-    data_items_raw = data_items_raw[9::1] # skip header
+
     
     main()

@@ -9,14 +9,14 @@ from overlay import Overlay
 import push_error
 import window
 from ui_dearpygui import StateWindow
-
+import rto.rto_forms_list
 from mouse import Mouse
 
 
 # Default window to target. Matched as a literal prefix (see window._find_handles),
 # so do not put regex like ".*" here. It can be changed at runtime from the UI dropdown.
 DEFAULT_TARGET_TITLE = "GigaTest"
-FRAME_TIME = 1 / 20
+FRAME_TIME = 1 / 60
 CHILD_DEPTH = 2   # levels of child controls to scan (1 = direct children only)
 
 @dataclass
@@ -49,8 +49,13 @@ class FormBot:
     def _start(self):
         keyboard.on_press_key("esc", lambda _e: self.request_exit())
         self.state.target_window = window.get_window_info_by_title(self.state.target_window_title)
+
+        forms_list = rto.rto_forms_list.RTOFormsList()
+        forms_list.refresh("Firefox")
+
         self.ui = StateWindow(
             self.state,
+            forms_list,
             on_close=self.request_exit,
             window_provider=window.get_top_windows,
             on_window_selected=self.set_target_title,

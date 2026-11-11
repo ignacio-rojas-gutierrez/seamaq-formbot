@@ -4,6 +4,8 @@ import enum
 import re
 from dataclasses import dataclass
 
+import web_uia
+
 # Old format ABC123, Mercosur format AB123CD.
 _PATENTE_RE = re.compile(r"[A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2}")
 _PLACEHOLDER_PLATES = ("000000", "999999")      # slots without a real vehicle
@@ -31,15 +33,15 @@ class Linea(enum.Enum):
 
 
 class Resultado(enum.Enum):
-    NO_REVISADO = 0
+    NO_INSPECCIONADO = "No Inspeccionado (0)"
     APTO = "Apto (1)"
     CONDICIONAL = "Condicional (2)"
     RECHAZADO = "Rechazado (3)"
-    ANULADO = "Anulado (4)"
+    ANULADO = "Anulado (9)"
 
     @classmethod
     def parse(cls, text: "str | Resultado") -> "Resultado":
-        """Accepts a Resultado, 'Apto (1)', 'apto', or '' (= not reviewed yet)."""
+        """Accepts a Resultado. e.g., 'Apto (1)', 'apto', or '' (= not reviewed yet)."""
         if isinstance(text, cls):
             return text
         clean = (text or "").strip().lower()
@@ -86,14 +88,21 @@ def is_available(license_plate: str) -> bool:
     return clean_license_plate(license_plate) not in _PLACEHOLDER_PLATES
 
 
+def is_entry_number(number_str: str) -> bool:
+    number = number_str.replace(",", "").replace(".", "").strip()
+    return number.isdigit()
+
+
 @dataclass
-class RTO:
+class RTOEntry:
     dominio: str
     numero: "int | str | None"
     tipo_revision: "TipoRevision | str"
     linea: "Linea | str | int"
     resultado: "Resultado | str"
     inicio: str
+    accesible_buttons: list[web_uia.DataItemInfo]
+
 
     def __post_init__(self):
         self.dominio = clean_license_plate(self.dominio)
@@ -111,7 +120,7 @@ class RTO:
         self.resultado = Resultado.parse(self.resultado)
 
     @classmethod
-    def try_create(cls, *args, **kwargs) -> "RTO | None":
+    def try_create(cls, *args, **kwargs) -> "RTOEntry | None":
         """Like RTO(...), but returns None instead of raising when the data is invalid
         (handy when reading rows from the web page)."""
         try:
