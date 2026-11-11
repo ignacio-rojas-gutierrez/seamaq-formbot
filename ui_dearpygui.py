@@ -17,6 +17,7 @@ automatically.
 import dataclasses
 import time
 from collections import deque
+from tests.master_detail import MasterDetail
 
 import dearpygui.dearpygui as dpg
 
@@ -82,7 +83,7 @@ def build_rows(obj, path="", depth=0, max_depth=16):
 
 
 class StateWindow:
-    def __init__(self, state, title="Seamaq", on_close=None, start_open=True, window_provider=None, on_window_selected=None):
+    def __init__(self, state, forms_list, title="Seamaq", on_close=None, start_open=True, window_provider=None, on_window_selected=None):
         self.state = state
         self.closed = False
         self._on_close = on_close
@@ -97,6 +98,7 @@ class StateWindow:
         self._log_max = 500
         self._frames = 0
         self._last_fps_time = time.time()
+        self._forms_list = forms_list
 
         dpg.create_context()
         dpg.create_viewport(title=title, width=520, height=520, always_on_top=True)
@@ -104,6 +106,12 @@ class StateWindow:
         with dpg.window() as main_window:
             self._fps_label = dpg.add_text("", color=GRAY)
             with dpg.tab_bar():
+                
+                # Planillas Tab
+                with dpg.tab(label="Planillas") as planillas_tab:
+                    self._planillas_tab = MasterDetail(planillas_tab, label_fn=lambda r: r.dominio)
+
+                
                 with dpg.tab(label="Interface"):
                     with dpg.group(horizontal=True):
                         self._window_combo = dpg.add_combo(
@@ -114,6 +122,7 @@ class StateWindow:
                     self._state_box = dpg.add_child_window(border=False)
                 with dpg.tab(label="Log"):
                     self._log_box = dpg.add_child_window(border=False)
+
 
         dpg.set_primary_window(main_window, True)
         dpg.setup_dearpygui()
@@ -134,6 +143,7 @@ class StateWindow:
         self._draw_state()
         self._draw_log()
         self._draw_fps()
+        self._planillas_tab.update(self._forms_list)
         dpg.render_dearpygui_frame()
 
     def close(self):

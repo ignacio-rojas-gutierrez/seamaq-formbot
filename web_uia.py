@@ -20,6 +20,7 @@ import argparse
 import re
 import time
 from dataclasses import dataclass, field
+from typing import Any
 
 from pywinauto import Desktop
 from pywinauto.keyboard import send_keys
@@ -70,6 +71,8 @@ class DataItemInfo:
     index: int = 0
     text: str = ""
     bounds: tuple = ()
+    element: Any = None
+    
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -207,9 +210,22 @@ def get_data_items(doc) -> list[DataItemInfo]:
     """Every 'DataItem' (table / grid row) inside a page document, with screen bounds.
     with_cells=True also reads the text of each row's direct children (slower)."""
     items = []
-    for i, el in enumerate(doc.descendants(control_type="DataItem")):
+    for i, el in enumerate(get_data_items_as_elements(doc)):
+        items.append(DataItemInfo(index=i, text=el.window_text(), bounds=_rect(el), element=el))
+    return items
+
+
+def get_data_items_as_elements(doc):
+    return doc.descendants(control_type="DataItem")
+
+
+def construct_data_items_from_elements(elements):
+    items = []
+    for i, el in enumerate(elements):
         items.append(DataItemInfo(index=i, text=el.window_text(), bounds=_rect(el)))
     return items
+    
+
 
 def get_data_items_by_title(doc, title: str):
     ensure_tab(doc, title)
