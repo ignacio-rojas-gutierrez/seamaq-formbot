@@ -63,6 +63,13 @@ class RowInfo:
     cells: list = field(default_factory=list)   # texts of the direct children (only if requested)
 
 
+@dataclass
+class DataItemInfo:
+    index: int = 0
+    text: str = ""
+    bounds: tuple = ()
+
+
 # ---- helpers ---------------------------------------------------------------
 def _rect(wrapper) -> tuple:
     r = wrapper.rectangle()
@@ -194,14 +201,13 @@ def get_page_document(win, title: str | None = None):
     return get_document(win, title)
 
 
-def get_data_items(doc, with_cells: bool = False) -> list[RowInfo]:
+def get_data_items(doc) -> list[DataItemInfo]:
     """Every 'DataItem' (table / grid row) inside a page document, with screen bounds.
     with_cells=True also reads the text of each row's direct children (slower)."""
-    rows = []
+    items = []
     for i, el in enumerate(doc.descendants(control_type="DataItem")):
-        cells = [c.window_text() for c in el.children()] if with_cells else []
-        rows.append(RowInfo(index=i, text=el.window_text(), bounds=_rect(el), cells=cells))
-    return rows
+        items.append(DataItemInfo(index=i, text=el.window_text(), bounds=_rect(el)))
+    return items
 
 
 def get_fields(win, control_types: tuple = FIELD_TYPES, title: str | None = None) -> list[FieldInfo]:
