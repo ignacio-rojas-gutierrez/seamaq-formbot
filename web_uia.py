@@ -34,6 +34,8 @@ PLANILLAS_URL = "https://rto.cent.ar/rto/RTO/listaDePlanillas"                  
 NUEVA_RTO_TITLE = "RTO"
 NUEVA_RTO_URL = "https://rto.cent.ar/rto/#"
 
+DATOS_TECNICOS_TITLE = "Datos Técnicos"
+
 @dataclass
 class BrowserTabInfo:
     index: int = 0
@@ -209,6 +211,11 @@ def get_data_items(doc) -> list[DataItemInfo]:
         items.append(DataItemInfo(index=i, text=el.window_text(), bounds=_rect(el)))
     return items
 
+def get_data_items_by_title(doc, title: str):
+    ensure_tab(doc, title)
+    return get_data_items(doc)
+    
+
 
 def get_fields(win, control_types: tuple = FIELD_TYPES, title: str | None = None) -> list[FieldInfo]:
     """Input fields of the active tab, with screen bounds.
@@ -294,6 +301,8 @@ def lista(win=None, url: str = PLANILLAS_URL, title: str = PLANILLAS_TITLE,
             if row.text == "":
                 print("/--------------------")
     return rows
+
+
 
 # ---- RTO (Página de Consulta) ----------------------------------------------------
 # TODO:
