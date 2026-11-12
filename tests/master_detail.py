@@ -29,7 +29,7 @@ GRAY = (150, 150, 150, 255)
 VALUE_COLORS = {"True": (90, 200, 90, 255), "False": (230, 90, 90, 255), "None": GRAY}
 DEFAULT_VALUE_COLOR = (230, 230, 230, 255)
 SKIP_FIELDS = {"children"}            # nested trees are shown elsewhere
-DETAIL_BG = (20, 120, 150, 255)
+
 
 def _props_of(obj) -> list[tuple[str, object]]:
     if isinstance(obj, dict):
